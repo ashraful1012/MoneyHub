@@ -127,6 +127,10 @@ body{
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 .empty-state{text-align:center;color:#64748b;padding:28px;font-size:12px}
+
+/* WARNING BANNER */
+.warning-banner{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:10px 14px;margin:10px 12px;font-size:11px;color:#fca5a5;display:none}
+.warning-banner.show{display:block}
 </style>
 </head>
 <body>
@@ -149,13 +153,18 @@ body{
   <button class="header-btn">👤</button>
 </header>
 
-<!-- PROFILE -->
+<!-- PROFILE - DYNAMIC FROM TELEGRAM -->
 <div class="profile-card">
-  <div class="avatar" id="avatarDisplay">A</div>
+  <div class="avatar" id="avatarDisplay">?</div>
   <div class="profile-info">
-    <h3><span id="nameDisplay">User</span> <span class="verified">✓</span></h3>
-    <p>🌐 <span id="ipDisplay">Detecting...</span>
+    <h3><span id="nameDisplay">Loading...</span> <span class="verified">✓</span></h3>
+    <p>🌐 <span id="ipDisplay">Detecting IP...</span></p>
   </div>
+</div>
+
+<!-- ANTI-FRAUD WARNING -->
+<div class="warning-banner" id="fraudWarning">
+  ⚠️ <strong>Fraud Detected!</strong> Same device/IP cannot create multiple accounts or self-refer.
 </div>
 
 <!-- HOME TAB -->
@@ -208,6 +217,7 @@ body{
     <h3 style="font-size:14px;font-weight:700;margin-bottom:9px">🔗 Your Referral Link</h3>
     <div class="ref-link-display" id="refLinkDisplay">Click Copy to generate...</div>
     <button class="btn btn-primary" onclick="copyRefLink()">📋 Copy Referral Link</button>
+    <p style="font-size:10px;color:#fca5a5;margin-top:8px;text-align:center">⚠️ Self-referral & same device refer is strictly prohibited!</p>
     <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:7px">
       <div style="background:#0f172a;border-radius:9px;padding:11px;text-align:center">
         <div style="font-size:17px;font-weight:800;color:#10b981" id="refCountDisplay2">0</div>
@@ -245,13 +255,15 @@ body{
   <button class="btn btn-primary" id="withdrawBtn" onclick="requestWithdraw()">💸 Submit Request</button>
 </div>
 
-<!-- PROFILE TAB -->
+<!-- PROFILE TAB - DYNAMIC DATA -->
 <div id="tab-profile" class="tab-panel">
   <div class="section-header"><div class="section-title">👤 Personal Profile</div></div>
   <div class="profile-section" style="background:#1e293b;border:1px solid rgba(51,65,85,.3);border-radius:14px;padding:14px;margin-bottom:12px">
     <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(51,65,85,.2)"><span style="font-size:12px;color:#94a3b8">Name</span><span style="font-size:12px;font-weight:600" id="profileName">-</span></div>
     <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(51,65,85,.2)"><span style="font-size:12px;color:#94a3b8">Username</span><span style="font-size:12px;font-weight:600" id="profileUsername">-</span></div>
-    <div style="display:flex;justify-content:space-between;padding:9px 0"><span style="font-size:12px;color:#94a3b8">Device IP</span><span style="font-size:12px;font-weight:600" id="profileIP">-</span></div>
+    <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(51,65,85,.2)"><span style="font-size:12px;color:#94a3b8">Telegram ID</span><span style="font-size:12px;font-weight:600;color:#10b981" id="profileTGId">-</span></div>
+    <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(51,65,85,.2)"><span style="font-size:12px;color:#94a3b8">Device IP</span><span style="font-size:12px;font-weight:600" id="profileIP">-</span></div>
+    <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(51,65,85,.2)"><span style="font-size:12px;color:#94a3b8">Device ID</span><span style="font-size:10px;font-weight:600" id="profileDeviceId">-</span></div>
     <div style="display:flex;justify-content:space-between;padding:9px 0"><span style="font-size:12px;color:#94a3b8">Join Date</span><span style="font-size:12px;font-weight:600" id="profileJoinDate">-</span></div>
   </div>
   <div class="stats-grid">
@@ -296,16 +308,182 @@ body{
 
 <!-- ===== JAVASCRIPT ===== -->
 <script>
-// ===== GLOBAL STATE =====
-let userData = {id:'demo_'+Math.random().toString(36).substr(2,9), name:'Ashraful Islam', username:'ashraful_demo'};
-let userBalance = 0.05; // Start with bonus
-let totalEarned = 0.05;
+// ===== GLOBAL STATE - NO HARDCODED NAME! =====
+let userData = { 
+  id: '', 
+  name: 'User',           // Will be replaced by Telegram data
+  username: 'user',       // Will be replaced by Telegram data  
+  telegramId: ''          // Real Telegram ID
+};
+let userBalance = 0;
+let totalEarned = 0;
 let adsWatchedToday = 0;
 let referralsCount = 0;
+let userIP = 'Detecting...';
+let deviceFingerprint = '';
+let db = null; // Firestore reference
 
-const CONFIG = { maxAdsPerDay:15, earnPerAd:0.02, referBonus:0.10, dailyBonus:0.05, minWithdraw:2.00 };
+const CONFIG = { 
+  maxAdsPerDay: 15, 
+  earnPerAd: 0.02, 
+  referBonus: 0.10, 
+  dailyBonus: 0.05, 
+  minWithdraw: 2.00 
+};
 
-// ===== COUNTDOWN TIMER (GUARANTEED TO WORK!) =====
+// ===== DEVICE FINGERPRINT GENERATOR =====
+function generateDeviceFingerprint() {
+  const components = [
+    navigator.userAgent,
+    navigator.language,
+    screen.width + 'x' + screen.height,
+    screen.colorDepth,
+    new Date().getTimezoneOffset(),
+    navigator.hardwareConcurrency || '',
+    navigator.platform,
+    navigator.vendor
+  ];
+  
+  // Add canvas fingerprint
+  try {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.textBaseline = 'top';
+    ctx.font = '14px Arial';
+    ctx.fillText('Fingerprint', 2, 2);
+    components.push(canvas.toDataURL());
+  } catch(e) {}
+  
+  // Hash the components
+  let hash = 0;
+  const str = components.join('|');
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  
+  return Math.abs(hash).toString(36) + Date.now().toString(36);
+}
+
+// Store device fingerprint immediately
+deviceFingerprint = generateDeviceFingerprint();
+console.log('[SECURITY] Device FP:', deviceFingerprint.substring(0, 12) + '...');
+
+// ===== REAL IP DETECTION =====
+async function detectRealIP() {
+  try {
+    // Try multiple IP APIs for reliability
+    const apis = [
+      'https://api.ipify.org?format=json',
+      'https://api.ip.sb/geoip',
+      'https://ipapi.co/json/'
+    ];
+    
+    for (const api of apis) {
+      try {
+        const response = await fetch(api, { 
+          signal: AbortSignal.timeout(5000),
+          mode: 'cors'
+        });
+        const data = await response.json();
+        
+        if (data.ip) {
+          userIP = data.ip;
+          console.log('[IP] Detected:', userIP);
+          setText('ipDisplay', userIP);
+          setText('profileIP', userIP);
+          return userIP;
+        }
+      } catch(e) {
+        console.warn('[IP] API failed:', api);
+        continue;
+      }
+    }
+    
+    // Fallback: Use WebRTC (more accurate)
+    userIP = await detectIPViaWebRTC();
+    return userIP;
+    
+  } catch(error) {
+    console.error('[IP] Detection failed:', error);
+    userIP = 'Unknown';
+    return userIP;
+  }
+}
+
+// WebRTC-based IP detection (bypasses proxies)
+async function detectIPViaWebRTC() {
+  return new Promise((resolve) => {
+    try {
+      const pc = new RTCPeerConnection({ iceServers: [] });
+      pc.createDataChannel('');
+      pc.createOffer().then(offer => pc.setLocalDescription(offer));
+      
+      pc.onicecandidate = (event) => {
+        if (!event.candidate) return;
+        const candidate = event.candidate.candidate;
+        const ipMatch = candidate.match(/(\d+\.\d+\.\d+\.\d+)/);
+        if (ipMatch && ipMatch[1] !== '0.0.0.0') {
+          resolve(ipMatch[1]);
+          pc.close();
+        }
+      };
+      
+      setTimeout(() => {
+        resolve('Unknown');
+        pc.close();
+      }, 3000);
+    } catch(e) {
+      resolve('Unknown');
+    }
+  });
+}
+
+// ===== GET TELEGRAM USER DATA =====
+function getTelegramUserData() {
+  return new Promise((resolve) => {
+    try {
+      if (window.Telegram?.WebApp) {
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        
+        const u = tg.initDataUnsafe?.user;
+        if (u) {
+          userData = {
+            id: String(u.id),
+            name: (u.first_name || 'User') + (u.last_name ? ' ' + u.last_name : ''),
+            username: u.username || ('user' + u.id),
+            telegramId: String(u.id)
+          };
+          
+          console.log('[TG] ✅ User loaded:', userData.name, '| ID:', userData.telegramId);
+          resolve(true);
+          return;
+        }
+      }
+      
+      // Not in Telegram - use demo mode but with random name
+      const names = ['Alex', 'Jordan', 'Taylor', 'Morgan', 'Casey', 'Riley', 'Quinn', 'Avery'];
+      userData = {
+        id: 'demo_' + Math.random().toString(36).substr(2, 9),
+        name: names[Math.floor(Math.random() * names.length)],
+        username: 'user' + Date.now().toString(36).substr(-6),
+        telegramId: ''
+      };
+      
+      console.log('[TG] ⚠️ Demo mode:', userData.name);
+      resolve(false);
+      
+    } catch(e) {
+      console.error('[TG] Error:', e);
+      resolve(false);
+    }
+  });
+}
+
+// ===== COUNTDOWN TIMER =====
 let countdown = 5;
 const timerEl = document.getElementById('countdownTimer');
 
@@ -315,13 +493,21 @@ const countdownInterval = setInterval(() => {
   
   if(countdown <= 0) {
     clearInterval(countdownInterval);
-    showMainApp(); // FORCE SHOW AFTER 5 SECONDS!
+    showMainApp();
   }
 }, 1000);
 
 // ===== SHOW MAIN APP =====
-function showMainApp() {
-  console.log('[APP] Showing main interface...');
+async function showMainApp() {
+  console.log('[APP] Starting...');
+  
+  // Get Telegram User Data FIRST
+  await getTelegramUserData();
+  
+  // Detect IP
+  await detectRealIP();
+  
+  // Show UI
   const splash = document.getElementById('splash');
   const app = document.getElementById('app');
   
@@ -330,37 +516,48 @@ function showMainApp() {
     setTimeout(() => {
       if(splash) splash.style.display = 'none';
       if(app) app.style.display = 'block';
-      updateAllUI();
-      showToast('✅ Welcome to EarnHub!');
       
-      // Try to initialize Firebase in BACKGROUND (non-blocking)
-      setTimeout(initFirebaseBackground, 1000);
+      // Update UI with REAL data
+      updateAllUI();
+      showToast('✅ Welcome, ' + userData.name.split(' ')[0] + '!');
+      
+      // Initialize Firebase
+      initFirebase();
     }, 300);
   }
 }
 
-// ===== UPDATE UI =====
+// ===== UPDATE UI WITH DYNAMIC DATA =====
 function updateAllUI() {
   const bal = '$' + userBalance.toFixed(2);
   const earned = '$' + totalEarned.toFixed(2);
+  const displayName = userData.name || 'User';
+  const displayInitial = (displayName.charAt(0) || '?').toUpperCase();
   
   setText('balanceDisplay', bal);
   setText('totalEarnedDisplay', earned);
   setText('walletBalanceDisplay', bal);
   setText('refCountDisplay', referralsCount);
   setText('refCountDisplay2', referralsCount);
-  setText('nameDisplay', userData.name);
-  setText('avatarDisplay', userData.name.charAt(0).toUpperCase());
-  setText('ipDisplay', '103.xxx.xx'); // Static for now
+  
+  // DYNAMIC NAME - NO MORE "ASHRAFUL"!
+  setText('nameDisplay', displayName);
+  setText('avatarDisplay', displayInitial);
+  setText('ipDisplay', userIP || 'Detecting...');
+  
   setText('adsLeftDisplay', (CONFIG.maxAdsPerDay - adsWatchedToday) + ' left');
-  setText('profileName', userData.name);
-  setText('profileUsername', '@' + userData.username);
-  setText('profileIP', '103.xxx.xx');
+  
+  // Profile Tab - All Dynamic
+  setText('profileName', displayName);
+  setText('profileUsername', '@' + (userData.username || 'user'));
+  setText('profileTGId', userData.telegramId || 'N/A');
+  setText('profileIP', userIP || 'Detecting...');
+  setText('profileDeviceId', deviceFingerprint ? (deviceFingerprint.substring(0, 16) + '...') : '-');
   setText('profileTotalEarned', earned);
- setText('profileCurrentBal', bal);
+  setText('profileCurrentBal', bal);
   setText('profileJoinDate', new Date().toLocaleDateString());
   
-  console.log('[UI] Updated:', bal);
+  console.log('[UI] Updated for:', displayName, '| IP:', userIP);
 }
 
 function setText(id, text) {
@@ -371,6 +568,11 @@ function setText(id, text) {
 function showToast(msg) {
   const t = document.getElementById('toast');
   if(t){ t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3000); }
+}
+
+function showFraudWarning(msg) {
+  const w = document.getElementById('fraudWarning');
+  if(w) { w.innerHTML = '⚠️ <strong>' + msg + '</strong>'; w.classList.add('show'); }
 }
 
 // ===== TAB SWITCHING =====
@@ -413,6 +615,8 @@ function watchAd() {
     totalEarned += CONFIG.earnPerAd;
     
     updateAllUI();
+    saveToFirebase(); // Save progress
+    
     btn.disabled = false;
     btn.innerHTML = '▶️ Watch Video & Earn $0.02';
     showToast('✅ +$0.02 earned!');
@@ -429,6 +633,7 @@ function completeTask(taskId, reward) {
     userBalance += reward;
     totalEarned += reward;
     updateAllUI();
+    saveToFirebase();
     showToast('✅ Task completed! +$'+reward.toFixed(2));
     if(btn){ btn.disabled=true; btn.innerHTML='✅ Done'; btn.style.background='#10b981'; }
   }, 1500);
@@ -443,6 +648,7 @@ function claimDailyBonus() {
     userBalance+=CONFIG.dailyBonus;
     totalEarned+=CONFIG.dailyBonus;
     updateAllUI();
+    saveToFirebase();
     showToast('🎁 +$0.05 claimed!');
     btn.disabled=true; btn.innerHTML='✅ Claimed'; btn.style.background='#64748b';
   }, 1200);
@@ -461,10 +667,28 @@ function requestWithdraw() {
   const btn=document.getElementById('withdrawBtn');
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Processing...';
 
+  // Save withdrawal request to Firebase
+  if(db) {
+    db.collection('withdrawals').add({
+      userId: userData.id,
+      userName: userData.name,
+      method: method,
+      account: acc,
+      amount: amt,
+      status: 'pending',
+      ip: userIP,
+      deviceFP: deviceFingerprint,
+      timestamp: new Date()
+    }).then(() => {
+      console.log('[WD] Request saved');
+    }).catch(err => console.error('[WD] Error:', err));
+  }
+
   setTimeout(() => {
     userBalance-=amt;
     updateAllUI();
-    showToast('✅ Withdrawal request submitted!');
+    saveToFirebase();
+    showToast('✅ Withdrawal submitted!');
     document.getElementById('withdrawAccount').value='';
     document.getElementById('withdrawAmount').value='';
     btn.disabled=false; btn.innerHTML='💸 Submit Request';
@@ -503,7 +727,6 @@ function loadLeaderboard(el, period) {
     el.classList.add('active');
   }
   
-  // Demo data for now (Firebase will update this later)
   const container = document.getElementById('leaderboardList');
   if(container) {
     container.innerHTML = `
@@ -516,14 +739,14 @@ function loadLeaderboard(el, period) {
   }
 }
 
-// ===== FIREBASE BACKGROUND INITIALIZATION (NON-BLOCKING!) =====
-async function initFirebaseBackground() {
+// ===== FIREBASE INITIALIZATION =====
+async function initFirebase() {
   try {
-    console.log('[FB] Starting background init...');
+    console.log('[FB] Initializing...');
     
-    // Dynamically import Firebase
+    // Dynamic import
     const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js");
-    const { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs, query, orderBy, limit } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+    const { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs, query, where, orderBy, limit } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
     
     const firebaseConfig = {
       apiKey: "AIzaSyDhzoNz4TSBCW5KhWg9b4-TCGhhI8gYcF8",
@@ -535,60 +758,186 @@ async function initFirebaseBackground() {
     };
     
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    db = getFirestore(app);
     
-    console.log('[FB] Firebase connected!');
-    window.db = db; // Store globally
+    console.log('[FB] ✅ Connected!');
     
-    // Get Telegram User Data
-    try {
-      if(window.Telegram?.WebApp) {
-        const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
-        const u = tg.initDataUnsafe?.user;
-        if(u) {
-          userData = { id:String(u.id), name:u.first_name+(u.last_name?' '+u.last_name:''), username:u.username||'user'+u.id };
-          console.log('[TG] User:', userData.name);
-        }
-      }
-    } catch(e) { console.warn('[TG] Error:', e); }
+    // CHECK FOR DUPLICATE DEVICE/IP (ANTI-FRAUD!)
+    await checkForFraud();
     
     // Load or Create User
+    await loadOrCreateUser();
+    
+  } catch(error) {
+    console.error('[FB] ❌ Error:', error);
+    showToast('⚠️ Offline mode');
+  }
+}
+
+// ===== ANTI-FRAUD: CHECK DUPLICATE DEVICE/IP =====
+async function checkForFraud() {
+  try {
+    console.log('[FRAUD] Checking for duplicates...');
+    
+    // Check if this device/IP already has an account
+    const dupByDevice = query(collection(db, 'users'), where('deviceFingerprint', '==', deviceFingerprint));
+    const dupByIP = query(collection(db, 'users'), where('ip', '==', userIP));
+    
+    const [deviceSnap, ipSnap] = await Promise.all([
+      getDocs(dupByDevice),
+      getDocs(dupByIP)
+    ]);
+    
+    let isDuplicate = false;
+    let existingUser = null;
+    
+    // Check device fingerprint
+    deviceSnap.forEach(doc => {
+      if (doc.id !== userData.id) {
+        isDuplicate = true;
+        existingUser = doc.data();
+        console.warn('[FRAUD] Same device found:', existingUser.name);
+      }
+    });
+    
+    // Check IP address
+    ipSnap.forEach(doc => {
+      if (doc.id !== userData.id) {
+        isDuplicate = true;
+        existingUser = doc.data();
+        console.warn('[FRAUD] Same IP found:', existingUser.name);
+      }
+    });
+    
+    if (isDuplicate && existingUser) {
+      showFraudWarning(`Duplicate detected! Account "${existingUser.name}" exists on this device/IP.`);
+      
+      // Optional: Block the user or mark as suspicious
+      // You can choose to allow read-only access or block completely
+      
+      // For now, just warn but allow access (you can change this)
+      // return; // Uncomment to block access
+    }
+    
+  } catch(error) {
+    console.error('[FRAUD] Check error:', error);
+  }
+}
+
+// ===== CHECK REFERRAL VALIDITY (PREVENT SELF-REFER) =====
+async function isValidReferral(referrerId) {
+  try {
+    if (!referrerId || referrerId === userData.id) {
+      console.log('[REF] Self-refer attempt blocked!');
+      return false;
+    }
+    
+    // Get referrer's device/IP
+    const refDoc = await getDoc(doc(db, 'users', referrerId));
+    if (!refDoc.exists()) return true; // New referrer, allow
+    
+    const refData = refDoc.data();
+    
+    // Check if referrer has same device or IP
+    if (refData.deviceFingerprint === deviceFingerprint) {
+      console.log('[REF] Same device refer blocked!');
+      showFraudWarning('Cannot refer from same device!');
+      return false;
+    }
+    
+    if (refData.ip === userIP) {
+      console.log('[REF] Same IP refer blocked!');
+      showFraudWarning('Cannot refer from same network!');
+      return false;
+    }
+    
+    return true;
+    
+  } catch(error) {
+    console.error('[REF] Validation error:', error);
+    return true; // Allow on error
+  }
+}
+
+// ===== LOAD OR CREATE USER =====
+async function loadOrCreateUser() {
+  try {
     const userRef = doc(db, 'users', userData.id);
     const snap = await getDoc(userRef);
     const today = new Date().toDateString();
     
     if(!snap.exists()) {
-      console.log('[FB] Creating new user...');
+      console.log('[FB] Creating new user:', userData.name);
+      
       await setDoc(userRef, {
-        uid:userData.id, name:userData.name, username:userData.username,
-        balance:CONFIG.dailyBonus, totalEarned:CONFIG.dailyBonus,
-        ip:'103.xxx.xx', referralCount:0, joinDate:new Date().toISOString(),
-        lastLogin:new Date().toISOString(), adsToday:0, lastAdDate:today,
-        tasksCompleted:0, status:'active'
+        uid: userData.id,
+        name: userData.name,
+        username: userData.username,
+        telegramId: userData.telegramId,
+        balance: CONFIG.dailyBonus,
+        totalEarned: CONFIG.dailyBonus,
+        ip: userIP,
+        deviceFingerprint: deviceFingerprint,
+        referralCount: 0,
+        referredBy: null,
+        joinDate: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+        adsToday: 0,
+        lastAdDate: today,
+        tasksCompleted: 0,
+        status: 'active',
+        createdAt: new Date()
       });
+      
       userBalance = CONFIG.dailyBonus;
       totalEarned = CONFIG.dailyBonus;
       showToast('🎉 Welcome Bonus: +$0.05');
+      
     } else {
-      console.log('[FB] Loading existing user...');
+      console.log('[FB] Loading existing user:', snap.data().name);
       const d = snap.data();
+      
+      // UPDATE NAME IF CHANGED IN TELEGRAM
+      if (d.name !== userData.name) {
+        await updateDoc(userRef, { name: userData.name });
+      }
+      
       userBalance = d.balance || 0;
       totalEarned = d.totalEarned || 0;
       referralsCount = d.referralCount || 0;
-      adsWatchedToday = (d.lastAdDate===today) ? (d.adsToday||0) : 0;
-      await updateDoc(userRef, { lastLogin:new Date().toISOString() });
+      adsWatchedToday = (d.lastAdDate === today) ? (d.adsToday || 0) : 0;
+      
+      // Update last login & current IP/device
+      await updateDoc(userRef, { 
+        lastLogin: new Date().toISOString(),
+        ip: userIP,
+        deviceFingerprint: deviceFingerprint
+      });
     }
     
-    // Update UI with real data
     updateAllUI();
-    console.log('[FB] All data loaded successfully!');
+    console.log('[FB] ✅ Data loaded!');
     
   } catch(error) {
-    console.error('[FB ERROR]', error);
-    // Don't show error to user - app already working with demo data
-    console.log('[FB] Continuing with offline mode...');
+    console.error('[FB] User error:', error);
+  }
+}
+
+// ===== SAVE TO FIREBASE =====
+async function saveToFirebase() {
+  if (!db) return;
+  
+  try {
+    const today = new Date().toDateString();
+    await updateDoc(doc(db, 'users', userData.id), {
+      balance: userBalance,
+      totalEarned: totalEarned,
+      adsToday: adsWatchedToday,
+      lastAdDate: today,
+      lastUpdated: new Date().toISOString()
+    });
+  } catch(e) {
+    console.error('[FB] Save error:', e);
   }
 }
 
@@ -597,15 +946,16 @@ try {
   if(window.Telegram?.WebApp) {
     window.Telegram.WebApp.ready();
     window.Telegram.WebApp.expand();
-    console.log('[TG] Telegram WebApp initialized');
+    console.log('[TG] ✅ Initialized');
   }
 } catch(e) {
-  console.warn('[TG] Not in Telegram');
+  console.warn('[TG] Not in Telegram environment');
 }
 
 // ===== STARTUP LOG =====
 console.log('================================');
-console.log('💰 EarnHub Pro - Starting...');
+console.log('💰 EarnHub Pro v2.0');
+console.log('🔒 Anti-Fraud: Enabled');
 console.log('================================');
 
 </script>
