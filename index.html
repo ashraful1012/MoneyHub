@@ -31,6 +31,15 @@ body{
 .splash-timer{font-size:48px;font-weight:800;color:#10b981;margin-bottom:8px}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
 
+/* ERROR SCREEN (NOT IN TELEGRAM) */
+#errorScreen{
+  display:none;position:fixed;top:0;left:0;right:0;bottom:0;
+  background:linear-gradient(135deg,#0f172a,#1e293b);
+  z-index:99999;flex-direction:column;
+  align-items:center;justify-content:center;padding:30px;text-align:center;
+}
+.error-icon{font-size:60px;margin-bottom:16px}
+
 /* MAIN APP */
 #app{display:none;max-width:480px;margin:0 auto;min-height:100vh;padding-bottom:85px;background:linear-gradient(135deg,#0f172a,#1e293b)}
 
@@ -39,11 +48,12 @@ body{
 .header-title{font-size:17px;font-weight:800;background:linear-gradient(135deg,#10b981,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .header-btn{width:34px;height:34px;background:#1e293b;border:1px solid rgba(51,65,85,0.5);border-radius:10px;color:#94a3b8;font-size:15px;border:none;cursor:pointer}
 
-/* PROFILE CARD */
+/* PROFILE CARD - WITH USERNAME */
 .profile-card{margin:12px;background:linear-gradient(135deg,#1e293b,#334155);border:1px solid rgba(51,65,85,0.3);border-radius:16px;padding:14px;display:flex;align-items:center;gap:12px}
 .avatar{width:48px;height:48px;background:linear-gradient(135deg,#10b981,#059669);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:white;flex-shrink:0}
-.profile-info h3{font-size:14px;font-weight:700;display:flex;align-items:center;gap:5px}
+.profile-info h3{font-size:14px;font-weight:700;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .verified{color:#10b981;font-size:13px}
+.username-tag{color:#64748b;font-size:11px;font-weight:400;background:rgba(100,116,139,0.15);padding:2px 6px;border-radius:4px}
 .profile-info p{font-size:11px;color:#64748b;margin-top:2px}
 
 /* BALANCE CARD */
@@ -128,9 +138,8 @@ body{
 
 .empty-state{text-align:center;color:#64748b;padding:28px;font-size:12px}
 
-/* WARNING BANNER */
-.warning-banner{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:10px 14px;margin:10px 12px;font-size:11px;color:#fca5a5;display:none}
-.warning-banner.show{display:block}
+/* LOADING SPINNER FOR INIT */
+.loading-spinner{width:40px;height:40px;border:3px solid rgba(16,185,129,.2);border-top-color:#10b981;border-radius:50%;animation:spin .8s linear infinite;margin:20px auto}
 </style>
 </head>
 <body>
@@ -139,8 +148,23 @@ body{
 <div id="splash">
   <div class="splash-logo">💰</div>
   <h1 class="splash-title">EarnHub Pro</h1>
-  <p class="splash-sub">Loading your account...</p>
-  <div class="splash-timer" id="countdownTimer">5</div>
+  <p class="splash-sub">Connecting to Telegram...</p>
+  <div class="splash-timer" id="countdownTimer">3</div>
+</div>
+
+<!-- ERROR SCREEN - NOT IN TELEGRAM -->
+<div id="errorScreen">
+  <div class="error-icon">📵</div>
+  <h2 style="font-size:22px;color:#ef4444;margin-bottom:12px">Access Denied</h2>
+  <p style="color:#94a3b8;font-size:14px;line-height:1.6;max-width:300px">
+    This app can only be opened through <strong style="color:#10b981">Telegram</strong>.
+  </p>
+  <p style="color:#64748b;font-size:12px;margin-top:16px">
+    Please open this link in Telegram Bot.
+  </p>
+  <button onclick="window.location.reload()" style="margin-top:24px;padding:12px 32px;background:#10b981;color:white;border:none;border-radius:10px;font-weight:600;cursor:pointer">
+    🔄 Try Again
+  </button>
 </div>
 
 <!-- MAIN APP -->
@@ -153,18 +177,17 @@ body{
   <button class="header-btn">👤</button>
 </header>
 
-<!-- PROFILE - DYNAMIC FROM TELEGRAM -->
+<!-- PROFILE - REAL TELEGRAM DATA ONLY! -->
 <div class="profile-card">
   <div class="avatar" id="avatarDisplay">?</div>
   <div class="profile-info">
-    <h3><span id="nameDisplay">Loading...</span> <span class="verified">✓</span></h3>
-    <p>🌐 <span id="ipDisplay">Detecting IP...</span></p>
+    <h3>
+      <span id="nameDisplay">Loading...</span> 
+      <span class="username-tag" id="usernameDisplay">@username</span>
+      <span class="verified">✓</span>
+    </h3>
+    <p>🌐 <span id="ipDisplay">Detecting...</span></p>
   </div>
-</div>
-
-<!-- ANTI-FRAUD WARNING -->
-<div class="warning-banner" id="fraudWarning">
-  ⚠️ <strong>Fraud Detected!</strong> Same device/IP cannot create multiple accounts or self-refer.
 </div>
 
 <!-- HOME TAB -->
@@ -217,7 +240,6 @@ body{
     <h3 style="font-size:14px;font-weight:700;margin-bottom:9px">🔗 Your Referral Link</h3>
     <div class="ref-link-display" id="refLinkDisplay">Click Copy to generate...</div>
     <button class="btn btn-primary" onclick="copyRefLink()">📋 Copy Referral Link</button>
-    <p style="font-size:10px;color:#fca5a5;margin-top:8px;text-align:center">⚠️ Self-referral & same device refer is strictly prohibited!</p>
     <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:7px">
       <div style="background:#0f172a;border-radius:9px;padding:11px;text-align:center">
         <div style="font-size:17px;font-weight:800;color:#10b981" id="refCountDisplay2">0</div>
@@ -255,16 +277,30 @@ body{
   <button class="btn btn-primary" id="withdrawBtn" onclick="requestWithdraw()">💸 Submit Request</button>
 </div>
 
-<!-- PROFILE TAB - DYNAMIC DATA -->
+<!-- PROFILE TAB -->
 <div id="tab-profile" class="tab-panel">
   <div class="section-header"><div class="section-title">👤 Personal Profile</div></div>
   <div class="profile-section" style="background:#1e293b;border:1px solid rgba(51,65,85,.3);border-radius:14px;padding:14px;margin-bottom:12px">
-    <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(51,65,85,.2)"><span style="font-size:12px;color:#94a3b8">Name</span><span style="font-size:12px;font-weight:600" id="profileName">-</span></div>
-    <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(51,65,85,.2)"><span style="font-size:12px;color:#94a3b8">Username</span><span style="font-size:12px;font-weight:600" id="profileUsername">-</span></div>
-    <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(51,65,85,.2)"><span style="font-size:12px;color:#94a3b8">Telegram ID</span><span style="font-size:12px;font-weight:600;color:#10b981" id="profileTGId">-</span></div>
-    <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(51,65,85,.2)"><span style="font-size:12px;color:#94a3b8">Device IP</span><span style="font-size:12px;font-weight:600" id="profileIP">-</span></div>
-    <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(51,65,85,.2)"><span style="font-size:12px;color:#94a3b8">Device ID</span><span style="font-size:10px;font-weight:600" id="profileDeviceId">-</span></div>
-    <div style="display:flex;justify-content:space-between;padding:9px 0"><span style="font-size:12px;color:#94a3b8">Join Date</span><span style="font-size:12px;font-weight:600" id="profileJoinDate">-</span></div>
+    <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(51,65,85,.2)">
+      <span style="font-size:12px;color:#94a3b8">Name</span>
+      <span style="font-size:12px;font-weight:600" id="profileName">-</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(51,65,85,.2)">
+      <span style="font-size:12px;color:#94a3b8">Username</span>
+      <span style="font-size:12px;font-weight:600;color:#10b981" id="profileUsername">-</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(51,65,85,.2)">
+      <span style="font-size:12px;color:#94a3b8">Telegram ID</span>
+      <span style="font-size:12px;font-weight:600" id="profileTGId">-</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(51,65,85,.2)">
+      <span style="font-size:12px;color:#94a3b8">Device IP</span>
+      <span style="font-size:12px;font-weight:600" id="profileIP">-</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:9px 0">
+      <span style="font-size:12px;color:#94a3b8">Join Date</span>
+      <span style="font-size:12px;font-weight:600" id="profileJoinDate">-</span>
+    </div>
   </div>
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-value" id="profileTotalEarned">$0.00</div><div class="stat-label">Total Earned</div></div>
@@ -306,22 +342,20 @@ body{
 <!-- TOAST -->
 <div id="toast"></div>
 
-<!-- ===== JAVASCRIPT ===== -->
+<!-- ===== JAVASCRIPT - STRICT TELEGRAM MODE ===== -->
 <script>
-// ===== GLOBAL STATE - NO HARDCODED NAME! =====
-let userData = { 
-  id: '', 
-  name: 'User',           // Will be replaced by Telegram data
-  username: 'user',       // Will be replaced by Telegram data  
-  telegramId: ''          // Real Telegram ID
-};
+// =====================================================
+// 🔒 STRICT TELEGRAM MODE - NO DEMO, NO RANDOM DATA!
+// =====================================================
+
+// ===== GLOBAL STATE =====
+let userData = null; // Will be set from Telegram ONLY
 let userBalance = 0;
 let totalEarned = 0;
 let adsWatchedToday = 0;
 let referralsCount = 0;
 let userIP = 'Detecting...';
-let deviceFingerprint = '';
-let db = null; // Firestore reference
+let db = null;
 
 const CONFIG = { 
   maxAdsPerDay: 15, 
@@ -331,160 +365,123 @@ const CONFIG = {
   minWithdraw: 2.00 
 };
 
-// ===== DEVICE FINGERPRINT GENERATOR =====
-function generateDeviceFingerprint() {
-  const components = [
-    navigator.userAgent,
-    navigator.language,
-    screen.width + 'x' + screen.height,
-    screen.colorDepth,
-    new Date().getTimezoneOffset(),
-    navigator.hardwareConcurrency || '',
-    navigator.platform,
-    navigator.vendor
-  ];
-  
-  // Add canvas fingerprint
-  try {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    ctx.textBaseline = 'top';
-    ctx.font = '14px Arial';
-    ctx.fillText('Fingerprint', 2, 2);
-    components.push(canvas.toDataURL());
-  } catch(e) {}
-  
-  // Hash the components
-  let hash = 0;
-  const str = components.join('|');
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  
-  return Math.abs(hash).toString(36) + Date.now().toString(36);
-}
-
-// Store device fingerprint immediately
-deviceFingerprint = generateDeviceFingerprint();
-console.log('[SECURITY] Device FP:', deviceFingerprint.substring(0, 12) + '...');
-
-// ===== REAL IP DETECTION =====
-async function detectRealIP() {
-  try {
-    // Try multiple IP APIs for reliability
-    const apis = [
-      'https://api.ipify.org?format=json',
-      'https://api.ip.sb/geoip',
-      'https://ipapi.co/json/'
-    ];
+// =====================================================
+// 🚀 STEP 1: VERIFY TELEGRAM ENVIRONMENT (CRITICAL!)
+// =====================================================
+function verifyTelegramEnvironment() {
+  return new Promise((resolve) => {
+    console.log('[VERIFY] Checking Telegram environment...');
     
-    for (const api of apis) {
-      try {
-        const response = await fetch(api, { 
-          signal: AbortSignal.timeout(5000),
-          mode: 'cors'
-        });
-        const data = await response.json();
-        
-        if (data.ip) {
-          userIP = data.ip;
-          console.log('[IP] Detected:', userIP);
-          setText('ipDisplay', userIP);
-          setText('profileIP', userIP);
-          return userIP;
-        }
-      } catch(e) {
-        console.warn('[IP] API failed:', api);
-        continue;
-      }
+    // Check if Telegram WebApp exists
+    if (!window.Telegram || !window.Telegram.WebApp) {
+      console.error('[VERIFY] ❌ No Telegram.WebApp found');
+      resolve(false);
+      return;
     }
     
-    // Fallback: Use WebRTC (more accurate)
-    userIP = await detectIPViaWebRTC();
-    return userIP;
+    const tg = window.Telegram.WebApp;
+    
+    // Initialize Telegram
+    try {
+      tg.ready();
+      tg.expand();
+      console.log('[VERIFY] ✅ Telegram WebApp ready');
+    } catch(e) {
+      console.error('[VERIFY] ❌ Error initializing:', e);
+      resolve(false);
+      return;
+    }
+    
+    // Check for user data
+    const initData = tg.initDataUnsafe;
+    if (!initData || !initData.user) {
+      console.error('[VERIFY] ❌ No user data in initData');
+      console.log('[VERIFY] initData:', JSON.stringify(initData));
+      resolve(false);
+      return;
+    }
+    
+    // Verify we have required fields
+    const u = initData.user;
+    if (!u.id) {
+      console.error('[VERIFY] ❌ Missing user.id');
+      resolve(false);
+      return;
+    }
+    
+    console.log('[VERIFY] ✅ All checks passed!');
+    console.log('[VERIFY] User ID:', u.id);
+    console.log('[VERIFY] User Name:', u.first_name);
+    resolve(true);
+  });
+}
+
+// =====================================================
+// 👤 STEP 2: GET TELEGRAM USER DATA (REAL DATA ONLY!)
+// =====================================================
+async function getTelegramUserData() {
+  console.log('[USER] Extracting Telegram user data...');
+  
+  try {
+    const tg = window.Telegram.WebApp;
+    const u = tg.initDataUnsafe.user;
+    
+    // Build user object from REAL Telegram data
+    userData = {
+      id: String(u.id), // REAL Telegram ID - NEVER CHANGES!
+      firstName: u.first_name || '',
+      lastName: u.last_name || '',
+      name: (u.first_name || 'User') + (u.last_name ? ' ' + u.last_name : ''),
+      username: u.username || null, // Can be null if no username set
+      telegramId: String(u.id),
+      languageCode: u.language_code || 'en',
+      isPremium: u.is_premium || false,
+      allowsWriteToPm: u.allows_write_to_pm || false
+    };
+    
+    console.log('[USER] ✅ Real data loaded:');
+    console.log('  └─ ID:', userData.id);
+    console.log('  └─ Name:', userData.name);
+    console.log('  └─ Username:', userData.username || '(none)');
+    console.log('  └─ Premium:', userData.isPremium);
+    
+    return true;
     
   } catch(error) {
-    console.error('[IP] Detection failed:', error);
-    userIP = 'Unknown';
-    return userIP;
+    console.error('[USER] ❌ Error:', error);
+    return false;
   }
 }
 
-// WebRTC-based IP detection (bypasses proxies)
-async function detectIPViaWebRTC() {
-  return new Promise((resolve) => {
-    try {
-      const pc = new RTCPeerConnection({ iceServers: [] });
-      pc.createDataChannel('');
-      pc.createOffer().then(offer => pc.setLocalDescription(offer));
-      
-      pc.onicecandidate = (event) => {
-        if (!event.candidate) return;
-        const candidate = event.candidate.candidate;
-        const ipMatch = candidate.match(/(\d+\.\d+\.\d+\.\d+)/);
-        if (ipMatch && ipMatch[1] !== '0.0.0.0') {
-          resolve(ipMatch[1]);
-          pc.close();
-        }
-      };
-      
-      setTimeout(() => {
-        resolve('Unknown');
-        pc.close();
-      }, 3000);
-    } catch(e) {
-      resolve('Unknown');
+// =====================================================
+// 🌐 STEP 3: DETECT REAL IP
+// =====================================================
+async function detectRealIP() {
+  try {
+    const response = await fetch('https://api.ipify.org?format=json', {
+      signal: AbortSignal.timeout(5000)
+    });
+    const data = await response.json();
+    
+    if (data.ip) {
+      userIP = data.ip;
+      setText('ipDisplay', userIP);
+      setText('profileIP', userIP);
+      console.log('[IP] ✅ Detected:', userIP);
+      return userIP;
     }
-  });
+  } catch(e) {
+    console.warn('[IP] API failed, trying fallback...');
+  }
+  
+  userIP = 'Unknown';
+  return userIP;
 }
 
-// ===== GET TELEGRAM USER DATA =====
-function getTelegramUserData() {
-  return new Promise((resolve) => {
-    try {
-      if (window.Telegram?.WebApp) {
-        const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
-        
-        const u = tg.initDataUnsafe?.user;
-        if (u) {
-          userData = {
-            id: String(u.id),
-            name: (u.first_name || 'User') + (u.last_name ? ' ' + u.last_name : ''),
-            username: u.username || ('user' + u.id),
-            telegramId: String(u.id)
-          };
-          
-          console.log('[TG] ✅ User loaded:', userData.name, '| ID:', userData.telegramId);
-          resolve(true);
-          return;
-        }
-      }
-      
-      // Not in Telegram - use demo mode but with random name
-      const names = ['Alex', 'Jordan', 'Taylor', 'Morgan', 'Casey', 'Riley', 'Quinn', 'Avery'];
-      userData = {
-        id: 'demo_' + Math.random().toString(36).substr(2, 9),
-        name: names[Math.floor(Math.random() * names.length)],
-        username: 'user' + Date.now().toString(36).substr(-6),
-        telegramId: ''
-      };
-      
-      console.log('[TG] ⚠️ Demo mode:', userData.name);
-      resolve(false);
-      
-    } catch(e) {
-      console.error('[TG] Error:', e);
-      resolve(false);
-    }
-  });
-}
-
-// ===== COUNTDOWN TIMER =====
-let countdown = 5;
+// =====================================================
+// ⏱️ COUNTDOWN TIMER
+// =====================================================
+let countdown = 3;
 const timerEl = document.getElementById('countdownTimer');
 
 const countdownInterval = setInterval(() => {
@@ -493,71 +490,124 @@ const countdownInterval = setInterval(() => {
   
   if(countdown <= 0) {
     clearInterval(countdownInterval);
-    showMainApp();
+    initializeApp();
   }
 }, 1000);
 
-// ===== SHOW MAIN APP =====
-async function showMainApp() {
-  console.log('[APP] Starting...');
+// =====================================================
+// 🚀 MAIN INITIALIZATION
+// =====================================================
+async function initializeApp() {
+  console.log('\n========================================');
+  console.log('💰 EarnHub Pro v4.0 - STRICT MODE');
+  console.log('========================================\n');
   
-  // Get Telegram User Data FIRST
-  await getTelegramUserData();
+  // Step 1: Verify Telegram Environment
+  const isTelegram = await verifyTelegramEnvironment();
   
-  // Detect IP
+  if (!isTelegram) {
+    console.error('[FATAL] Not running in Telegram!');
+    showErrorScreen();
+    return;
+  }
+  
+  // Step 2: Get Real User Data
+  const gotUser = await getTelegramUserData();
+  
+  if (!gotUser || !userData) {
+    console.error('[FATAL] Could not get user data!');
+    showErrorScreen();
+    return;
+  }
+  
+  // Step 3: Detect IP
   await detectRealIP();
   
-  // Show UI
-  const splash = document.getElementById('splash');
-  const app = document.getElementById('app');
+  // Step 4: Show App
+  showMainApp();
   
-  if(splash) {
-    splash.style.opacity = '0';
-    setTimeout(() => {
-      if(splash) splash.style.display = 'none';
-      if(app) app.style.display = 'block';
-      
-      // Update UI with REAL data
-      updateAllUI();
-      showToast('✅ Welcome, ' + userData.name.split(' ')[0] + '!');
-      
-      // Initialize Firebase
-      initFirebase();
-    }, 300);
-  }
+  // Step 5: Initialize Firebase & Load Data
+  await initFirebase();
+  
+  // Update UI with REAL data
+  updateAllUI();
+  
+  showToast('✅ Welcome, ' + userData.firstName + '!');
 }
 
-// ===== UPDATE UI WITH DYNAMIC DATA =====
+// =====================================================
+// 📱 SHOW/HIDE SCREENS
+// =====================================================
+function showMainApp() {
+  document.getElementById('splash').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  console.log('[UI] Main app shown');
+}
+
+function showErrorScreen() {
+  document.getElementById('splash').style.display = 'none';
+  document.getElementById('errorScreen').style.display = 'flex';
+  console.log('[UI] Error screen shown');
+}
+
+// =====================================================
+// 🔄 UPDATE UI (WITH REAL TELEGRAM DATA)
+// =====================================================
 function updateAllUI() {
+  if (!userData) {
+    console.warn('[UI] No user data yet');
+    return;
+  }
+  
   const bal = '$' + userBalance.toFixed(2);
   const earned = '$' + totalEarned.toFixed(2);
-  const displayName = userData.name || 'User';
+  
+  // Use REAL name from Telegram
+  const displayName = userData.name;
   const displayInitial = (displayName.charAt(0) || '?').toUpperCase();
   
+  // Username handling - show @ if exists, else hide
+  const displayUsername = userData.username ? ('@' + userData.username) : '';
+  
+  console.log('[UI] Updating with:');
+  console.log('  Name:', displayName);
+  console.log('  Username:', displayUsername || '(no username)');
+  
+  // Update all displays
   setText('balanceDisplay', bal);
   setText('totalEarnedDisplay', earned);
   setText('walletBalanceDisplay', bal);
   setText('refCountDisplay', referralsCount);
   setText('refCountDisplay2', referralsCount);
   
-  // DYNAMIC NAME - NO MORE "ASHRAFUL"!
+  // ✅ REAL NAME FROM TELEGRAM (never random!)
   setText('nameDisplay', displayName);
   setText('avatarDisplay', displayInitial);
-  setText('ipDisplay', userIP || 'Detecting...');
   
-  setText('adsLeftDisplay', (CONFIG.maxAdsPerDay - adsWatchedToday) + ' left');
+  // ✅ USERNAME (shows @username or hides if none)
+  const usernameEl = document.getElementById('usernameDisplay');
+  if (usernameEl) {
+    if (displayUsername) {
+      usernameEl.textContent = displayUsername;
+      usernameEl.style.display = 'inline';
+    } else {
+      usernameEl.style.display = 'none'; // Hide if no username
+    }
+  }
   
-  // Profile Tab - All Dynamic
+  setText('ipDisplay', userIP);
+  setText('adsLeftDisplay', Math.max(0, CONFIG.maxAdsPerDay - adsWatchedToday) + ' left');
+  
+  // Profile Tab
   setText('profileName', displayName);
-  setText('profileUsername', '@' + (userData.username || 'user'));
-  setText('profileTGId', userData.telegramId || 'N/A');
-  setText('profileIP', userIP || 'Detecting...');
-  setText('profileDeviceId', deviceFingerprint ? (deviceFingerprint.substring(0, 16) + '...') : '-');
+  setText('profileUsername', displayUsername || 'Not set');
+  setText('profileTGId', userData.telegramId);
+  setText('profileIP', userIP);
   setText('profileTotalEarned', earned);
   setText('profileCurrentBal', bal);
   setText('profileJoinDate', new Date().toLocaleDateString());
   
-  console.log('[UI] Updated for:', displayName, '| IP:', userIP);
+  console.log('[UI] ✅ Updated successfully');
 }
 
 function setText(id, text) {
@@ -565,17 +615,20 @@ function setText(id, text) {
   if(el) el.textContent = text;
 }
 
-function showToast(msg) {
+function showToast(msg, isError = false) {
   const t = document.getElementById('toast');
-  if(t){ t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3000); }
+  if(t){ 
+    t.textContent=msg; 
+    t.style.background = isError ? '#ef4444' : '#1e293b';
+    t.style.borderColor = isError ? '#ef4444' : '#10b981';
+    t.classList.add('show'); 
+    setTimeout(()=>t.classList.remove('show'), 3000); 
+  }
 }
 
-function showFraudWarning(msg) {
-  const w = document.getElementById('fraudWarning');
-  if(w) { w.innerHTML = '⚠️ <strong>' + msg + '</strong>'; w.classList.add('show'); }
-}
-
-// ===== TAB SWITCHING =====
+// =====================================================
+// 🔄 TAB SWITCHING
+// =====================================================
 function switchTab(tabName) {
   document.querySelectorAll('.tab-panel').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -590,9 +643,11 @@ function switchTab(tabName) {
   });
 }
 
-// ===== WATCH AD =====
+// =====================================================
+// ▶️ WATCH AD
+// =====================================================
 function watchAd() {
-  if(adsWatchedToday >= CONFIG.maxAdsPerDay) { showToast('⏰ Daily limit reached!'); return; }
+  if(adsWatchedToday >= CONFIG.maxAdsPerDay) { showToast('⏰ Daily limit reached!', true); return; }
   
   const btn = document.getElementById('watchAdBtn');
   btn.disabled = true;
@@ -615,7 +670,7 @@ function watchAd() {
     totalEarned += CONFIG.earnPerAd;
     
     updateAllUI();
-    saveToFirebase(); // Save progress
+    saveToFirebase();
     
     btn.disabled = false;
     btn.innerHTML = '▶️ Watch Video & Earn $0.02';
@@ -623,7 +678,9 @@ function watchAd() {
   }, 10000);
 }
 
-// ===== COMPLETE TASK =====
+// =====================================================
+// ✅ COMPLETE TASK
+// =====================================================
 function completeTask(taskId, reward) {
   const btnId = 'task' + taskId.charAt(0).toUpperCase() + taskId.slice(1) + 'Btn';
   const btn = document.getElementById(btnId);
@@ -639,7 +696,9 @@ function completeTask(taskId, reward) {
   }, 1500);
 }
 
-// ===== CLAIM DAILY BONUS =====
+// =====================================================
+// 🎁 CLAIM DAILY BONUS
+// =====================================================
 function claimDailyBonus() {
   const btn=document.getElementById('dailyBonusBtn');
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
@@ -654,20 +713,21 @@ function claimDailyBonus() {
   }, 1200);
 }
 
-// ===== REQUEST WITHDRAW =====
+// =====================================================
+// 💸 REQUEST WITHDRAW
+// =====================================================
 function requestWithdraw() {
   const method=document.getElementById('withdrawMethod').value;
   const acc=document.getElementById('withdrawAccount').value.trim();
   const amt=parseFloat(document.getElementById('withdrawAmount').value);
   
-  if(!acc){ showToast('❌ Enter account!'); return; }
-  if(!amt||amt<CONFIG.minWithdraw){ showToast(`❌ Min $${CONFIG.minWithdraw}`); return; }
-  if(amt>userBalance){ showToast('❌ Insufficient balance!'); return; }
+  if(!acc){ showToast('❌ Enter account!', true); return; }
+  if(!amt||amt<CONFIG.minWithdraw){ showToast(`❌ Min $${CONFIG.minWithdraw}`, true); return; }
+  if(amt>userBalance){ showToast('❌ Insufficient balance!', true); return; }
 
   const btn=document.getElementById('withdrawBtn');
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Processing...';
 
-  // Save withdrawal request to Firebase
   if(db) {
     db.collection('withdrawals').add({
       userId: userData.id,
@@ -677,11 +737,8 @@ function requestWithdraw() {
       amount: amt,
       status: 'pending',
       ip: userIP,
-      deviceFP: deviceFingerprint,
       timestamp: new Date()
-    }).then(() => {
-      console.log('[WD] Request saved');
-    }).catch(err => console.error('[WD] Error:', err));
+    }).then(() => console.log('[WD] Saved')).catch(err => console.error('[WD]', err));
   }
 
   setTimeout(() => {
@@ -695,14 +752,14 @@ function requestWithdraw() {
   }, 1500);
 }
 
-// ===== COPY REF LINK =====
+// =====================================================
+// 📋 COPY REF LINK
+// =====================================================
 function copyRefLink() {
   const link='https://t.me/earnhubbot?start='+userData.id;
   
   if(navigator.clipboard) {
-    navigator.clipboard.writeText(link).then(()=>showToast('✅ Copied!')).catch(()=>{
-      fallbackCopy(link);
-    });
+    navigator.clipboard.writeText(link).then(()=>showToast('✅ Copied!')).catch(()=>fallbackCopy(link));
   } else {
     fallbackCopy(link);
   }
@@ -720,7 +777,9 @@ function fallbackCopy(text) {
   showToast('✅ Copied!');
 }
 
-// ===== LOAD LEADERBOARD =====
+// =====================================================
+// 🏆 LEADERBOARD
+// =====================================================
 function loadLeaderboard(el, period) {
   if(el){
     document.querySelectorAll('.lb-tab').forEach(t=>t.classList.remove('active'));
@@ -739,14 +798,15 @@ function loadLeaderboard(el, period) {
   }
 }
 
-// ===== FIREBASE INITIALIZATION =====
+// =====================================================
+// 💾 FIREBASE INITIALIZATION
+// =====================================================
 async function initFirebase() {
   try {
     console.log('[FB] Initializing...');
     
-    // Dynamic import
     const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js");
-    const { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs, query, where, orderBy, limit } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+    const { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
     
     const firebaseConfig = {
       apiKey: "AIzaSyDhzoNz4TSBCW5KhWg9b4-TCGhhI8gYcF8",
@@ -762,9 +822,6 @@ async function initFirebase() {
     
     console.log('[FB] ✅ Connected!');
     
-    // CHECK FOR DUPLICATE DEVICE/IP (ANTI-FRAUD!)
-    await checkForFraud();
-    
     // Load or Create User
     await loadOrCreateUser();
     
@@ -774,158 +831,81 @@ async function initFirebase() {
   }
 }
 
-// ===== ANTI-FRAUD: CHECK DUPLICATE DEVICE/IP =====
-async function checkForFraud() {
-  try {
-    console.log('[FRAUD] Checking for duplicates...');
-    
-    // Check if this device/IP already has an account
-    const dupByDevice = query(collection(db, 'users'), where('deviceFingerprint', '==', deviceFingerprint));
-    const dupByIP = query(collection(db, 'users'), where('ip', '==', userIP));
-    
-    const [deviceSnap, ipSnap] = await Promise.all([
-      getDocs(dupByDevice),
-      getDocs(dupByIP)
-    ]);
-    
-    let isDuplicate = false;
-    let existingUser = null;
-    
-    // Check device fingerprint
-    deviceSnap.forEach(doc => {
-      if (doc.id !== userData.id) {
-        isDuplicate = true;
-        existingUser = doc.data();
-        console.warn('[FRAUD] Same device found:', existingUser.name);
-      }
-    });
-    
-    // Check IP address
-    ipSnap.forEach(doc => {
-      if (doc.id !== userData.id) {
-        isDuplicate = true;
-        existingUser = doc.data();
-        console.warn('[FRAUD] Same IP found:', existingUser.name);
-      }
-    });
-    
-    if (isDuplicate && existingUser) {
-      showFraudWarning(`Duplicate detected! Account "${existingUser.name}" exists on this device/IP.`);
-      
-      // Optional: Block the user or mark as suspicious
-      // You can choose to allow read-only access or block completely
-      
-      // For now, just warn but allow access (you can change this)
-      // return; // Uncomment to block access
-    }
-    
-  } catch(error) {
-    console.error('[FRAUD] Check error:', error);
-  }
-}
-
-// ===== CHECK REFERRAL VALIDITY (PREVENT SELF-REFER) =====
-async function isValidReferral(referrerId) {
-  try {
-    if (!referrerId || referrerId === userData.id) {
-      console.log('[REF] Self-refer attempt blocked!');
-      return false;
-    }
-    
-    // Get referrer's device/IP
-    const refDoc = await getDoc(doc(db, 'users', referrerId));
-    if (!refDoc.exists()) return true; // New referrer, allow
-    
-    const refData = refDoc.data();
-    
-    // Check if referrer has same device or IP
-    if (refData.deviceFingerprint === deviceFingerprint) {
-      console.log('[REF] Same device refer blocked!');
-      showFraudWarning('Cannot refer from same device!');
-      return false;
-    }
-    
-    if (refData.ip === userIP) {
-      console.log('[REF] Same IP refer blocked!');
-      showFraudWarning('Cannot refer from same network!');
-      return false;
-    }
-    
-    return true;
-    
-  } catch(error) {
-    console.error('[REF] Validation error:', error);
-    return true; // Allow on error
-  }
-}
-
-// ===== LOAD OR CREATE USER =====
+// =====================================================
+// 👤 LOAD OR CREATE USER (TELEGRAM ID AS KEY!)
+// =====================================================
 async function loadOrCreateUser() {
   try {
+    // Use Telegram ID as document ID - THIS IS THE KEY FIX!
     const userRef = doc(db, 'users', userData.id);
     const snap = await getDoc(userRef);
     const today = new Date().toDateString();
     
     if(!snap.exists()) {
-      console.log('[FB] Creating new user:', userData.name);
+      // NEW USER - Create with REAL Telegram data
+      console.log('[USER] Creating new account for:', userData.name);
       
       await setDoc(userRef, {
-        uid: userData.id,
+        telegramId: userData.id,
         name: userData.name,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
         username: userData.username,
-        telegramId: userData.telegramId,
+        languageCode: userData.languageCode,
+        isPremium: userData.isPremium,
+        
         balance: CONFIG.dailyBonus,
         totalEarned: CONFIG.dailyBonus,
         ip: userIP,
-        deviceFingerprint: deviceFingerprint,
         referralCount: 0,
         referredBy: null,
+        
         joinDate: new Date().toISOString(),
         lastLogin: new Date().toISOString(),
         adsToday: 0,
         lastAdDate: today,
         tasksCompleted: 0,
-        status: 'active',
-        createdAt: new Date()
+        status: 'active'
       });
       
       userBalance = CONFIG.dailyBonus;
       totalEarned = CONFIG.dailyBonus;
+      
       showToast('🎉 Welcome Bonus: +$0.05');
+      console.log('[USER] ✅ New account created');
       
     } else {
-      console.log('[FB] Loading existing user:', snap.data().name);
+      // RETURNING USER - Load existing data (SAME ACCOUNT ALWAYS!)
+      console.log('[USER] Returning user:', snap.data().name);
+      
       const d = snap.data();
       
-      // UPDATE NAME IF CHANGED IN TELEGRAM
-      if (d.name !== userData.name) {
-        await updateDoc(userRef, { name: userData.name });
-      }
-      
+      // Load ALL existing data
       userBalance = d.balance || 0;
       totalEarned = d.totalEarned || 0;
       referralsCount = d.referralCount || 0;
       adsWatchedToday = (d.lastAdDate === today) ? (d.adsToday || 0) : 0;
       
-      // Update last login & current IP/device
+      // Update last login
       await updateDoc(userRef, { 
         lastLogin: new Date().toISOString(),
-        ip: userIP,
-        deviceFingerprint: deviceFingerprint
+        ip: userIP
       });
+      
+      console.log('[USER] ✅ Loaded existing account');
+      console.log('[USER] Balance:', userBalance);
     }
     
-    updateAllUI();
-    console.log('[FB] ✅ Data loaded!');
-    
   } catch(error) {
-    console.error('[FB] User error:', error);
+    console.error('[USER] Error:', error);
   }
 }
 
-// ===== SAVE TO FIREBASE =====
+// =====================================================
+// 💾 SAVE TO FIREBASE
+// =====================================================
 async function saveToFirebase() {
-  if (!db) return;
+  if (!db || !userData) return;
   
   try {
     const today = new Date().toDateString();
@@ -937,26 +917,18 @@ async function saveToFirebase() {
       lastUpdated: new Date().toISOString()
     });
   } catch(e) {
-    console.error('[FB] Save error:', e);
+    console.error('[SAVE] Error:', e);
   }
 }
 
-// ===== TELEGRAM WEBAPP INIT =====
-try {
-  if(window.Telegram?.WebApp) {
-    window.Telegram.WebApp.ready();
-    window.Telegram.WebApp.expand();
-    console.log('[TG] ✅ Initialized');
-  }
-} catch(e) {
-  console.warn('[TG] Not in Telegram environment');
-}
-
-// ===== STARTUP LOG =====
-console.log('================================');
-console.log('💰 EarnHub Pro v2.0');
-console.log('🔒 Anti-Fraud: Enabled');
-console.log('================================');
+// =====================================================
+// 📱 STARTUP LOG
+// =====================================================
+console.log('========================================');
+console.log('💰 EarnHub Pro v4.0');
+console.log('🔒 STRICT TELEGRAM MODE');
+console.log('🚫 NO DEMO / RANDOM DATA');
+console.log('========================================');
 
 </script>
 
@@ -964,4 +936,4 @@ console.log('================================');
 <script src='//libtl.com/sdk.js' data-zone='11104371' data-sdk='show_11104371'></script>
 
 </body>
-    </html>
+</html>
